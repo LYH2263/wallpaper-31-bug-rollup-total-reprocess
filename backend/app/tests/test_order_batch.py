@@ -136,3 +136,45 @@ def test_saved_batch_not_recomputed_after_perimeter_change(fresh_db):
     assert fresh["items"][0]["perimeter"] == 10.0
     assert fresh["totals"]["rolls"] != 24
     assert run_count() == 1  # no extra rows from reads
+
+
+# ---------- persistence: open by id, total is the plain sum of per-wall rolls ----------
+
+def _sum_item_rolls(result: dict) -> int:
+    return sum(int(i["rolls"]) for i in result["items"])
+
+
+def test_open_multi_wall_run_total_equals_sum_of_per_wall_rolls(fresh_db):
+    out = order_batch_service.run_batch([1, 2], 1, save=True, note="合并下单")
+    assert run_count() == 1  # saving one batch creates exactly one run
+
+    opened = history.get_run(out["run_id"])
+    result = opened["result"]
+    assert result["kind"] == "order_batch"
+    assert len(result["items"]) == 2
+    assert result["totals"]["wall_count"] == 2
+    # The core invariant: total rolls is the direct sum, never re-ceiled,
+    # never recomputed from drops, and no wall dropped.
+    assert result["totals"]["rolls"] == _sum_item_rolls(result)
+    assert result["totals"]["rolls"] == 24
+    assert result["totals"]["drops"] == sum(i["drops"] for i in result["items"])
+    assert "reprocessed" not in result["totals"]
+    assert "items_rolls_sum" not in result["totals"]
+
+
+def test_open_single_wall_run_total_equals_solo_estimate(fresh_db):
+    out = order_batch_service.run_batch([1], 1, save=True, note="单墙")
+    solo = run_estimate(1, 1, save=False, note="")
+    assert run_count() == 1
+
+    opened = history.get_run(out["run_id"])
+    result = opened["result"]
+    assert result["totals"]["wall_count"] == 1
+    assert result["totals"]["rolls"] == result["items"][0]["rolls"]
+    assert result["totals"]["rolls"] == _sum_item_rolls(result)
+    assert result["totals"]["rolls"] == solo["rolls"]
+    assert result["totals"]["drops"] == solo["drops"]
+
+
+def test_get_run_missing_returns_none(fresh_db):
+    assert history.get_run(999) is None

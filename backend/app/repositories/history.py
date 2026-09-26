@@ -17,6 +17,14 @@ def insert_run(wall_id: int, roll_id: int, result: dict, note: str = "") -> int:
         conn.close()
 
 
+def _row_to_run(row) -> dict:
+    d = dict(row)
+    # The stored JSON is the snapshot of record: totals.rolls is the plain sum
+    # of the per-wall rolls and is never reshaped on read.
+    d["result"] = json.loads(d.pop("result_json"))
+    return d
+
+
 def list_runs(limit: int = 50):
     conn = connect()
     try:
@@ -30,13 +38,24 @@ def list_runs(limit: int = 50):
             """,
             (limit,),
         ).fetchall()
-        from app.services.rollup_open import reprocess_totals
+        return [_row_to_run(row) for row in rows]
+    finally:
+        conn.close()
 
-        out = []
-        for row in rows:
-            d = dict(row)
-            d["result"] = reprocess_totals(json.loads(d.pop("result_json")))
-            out.append(d)
-        return out
+
+def get_run(run_id: int):
+    conn = connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT r.*, w.name wall_name, rl.name roll_name
+            FROM calc_runs r
+            LEFT JOIN walls w ON w.id=r.wall_id
+            LEFT JOIN rolls rl ON rl.id=r.roll_id
+            WHERE r.id=?
+            """,
+            (run_id,),
+        ).fetchone()
+        return _row_to_run(row) if row else None
     finally:
         conn.close()
