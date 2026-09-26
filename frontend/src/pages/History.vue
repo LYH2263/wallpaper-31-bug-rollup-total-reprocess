@@ -10,10 +10,6 @@ function toggle(id) {
   next.has(id) ? next.delete(id) : next.add(id)
   expanded.value = next
 }
-function itemSum(r) {
-  const items = r.result?.items || []
-  return items.reduce((s, it) => s + (it.rolls || 0), 0)
-}
 </script>
 <template>
   <div class="page"><h1>记录</h1><ul>
@@ -22,7 +18,6 @@ function itemSum(r) {
       <a href="#" @click.prevent="toggle(r.id)">{{ expanded.has(r.id) ? '▾' : '▸' }}</a>
       合并订卷 {{ r.result.totals.wall_count }} 面墙 · 卷材 {{ r.result.roll_name || r.roll_name }}
       → <strong>{{ r.result.totals.rolls }} 卷</strong>（{{ r.result.totals.drops }} 条）
-      <span v-if="r.result.totals.reprocessed" class="hint"> · 合计视图</span>
       <span v-if="r.note"> · {{ r.note }}</span>
       <table v-if="expanded.has(r.id)" class="batch-detail">
         <tr v-for="it in r.result.items" :key="it.wall_id">
@@ -31,7 +26,7 @@ function itemSum(r) {
           <td>{{ it.drops }} 条</td>
           <td>{{ it.rolls }} 卷</td>
         </tr>
-        <tr><td colspan="4">分项合计 {{ itemSum(r) }} 卷 · 列表 totals {{ r.result.totals.rolls }} 卷</td></tr>
+        <tr><td colspan="4">合计 {{ r.result.totals.rolls }} 卷</td></tr>
       </table>
     </template>
     <template v-else>{{ r.wall_name }} → {{ r.result?.rolls }} 卷</template>

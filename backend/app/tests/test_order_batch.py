@@ -110,8 +110,25 @@ def test_save_inserts_one_batch_run(fresh_db):
     result = row["result"]
     assert result["kind"] == "order_batch"
     assert len(result["items"]) == 2
+    # Reopened totals are the stored ones: plain sum of per-wall rolls,
+    # with no secondary processing markers.
     assert result["totals"]["rolls"] == 24
+    assert result["totals"]["rolls"] == sum(i["rolls"] for i in result["items"])
+    assert "reprocessed" not in result["totals"]
     assert result["items"][0]["perimeter"] == 16.0
+
+
+def test_reopened_single_wall_batch_matches_solo(fresh_db):
+    out = order_batch_service.run_batch([1], 1, save=True, note="")
+    solo = run_estimate(1, 1, save=False, note="")
+    assert run_count() == 1
+
+    saved = history.list_runs()[0]
+    assert saved["id"] == out["run_id"]
+    result = saved["result"]
+    assert result["totals"]["rolls"] == solo["rolls"]
+    assert result["totals"]["rolls"] == result["items"][0]["rolls"]
+    assert "reprocessed" not in result["totals"]
 
 
 def test_saved_batch_not_recomputed_after_perimeter_change(fresh_db):

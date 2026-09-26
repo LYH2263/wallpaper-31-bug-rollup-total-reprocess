@@ -30,12 +30,13 @@ def list_runs(limit: int = 50):
             """,
             (limit,),
         ).fetchall()
-        from app.services.rollup_open import reprocess_totals
-
         out = []
         for row in rows:
             d = dict(row)
-            d["result"] = reprocess_totals(json.loads(d.pop("result_json")))
+            # Stored results are returned verbatim: totals were final at save
+            # time (batch totals.rolls == sum of per-wall rolls) and must not
+            # be reprocessed on the open path.
+            d["result"] = json.loads(d.pop("result_json"))
             out.append(d)
         return out
     finally:

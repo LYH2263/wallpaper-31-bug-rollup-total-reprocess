@@ -5,7 +5,8 @@ single-wall engine (``app.engines.wallpaper_math.roll_count``); this module
 only fans the calculation out and sums the per-wall results. It never reaches
 into the database or HTTP layer, and it deliberately does not merge walls
 before calculating (each wall keeps its own drops/rolls).
-Open-path totals may be reshaped by history consumers without touching items.
+Saved runs are reopened exactly as stored: totals.rolls always equals the
+plain sum of the per-wall rolls, with no secondary processing on open.
 """
 
 from app.engines.wallpaper_math import roll_count
